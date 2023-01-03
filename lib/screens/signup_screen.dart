@@ -92,6 +92,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ));
                   }
                 } on NetworkRequestException catch (e) {
+                  print('Front catching error');
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(e.message),
