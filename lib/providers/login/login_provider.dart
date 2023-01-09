@@ -8,7 +8,7 @@ class LoginProvider extends ChangeNotifier {
     _currentState = LoginInitialState();
   }
 
-  late LoginState _currentState = LoginInitialState();
+  late LoginState _currentState;
   LoginState get currentState => _currentState;
 
   Future<void> login({
