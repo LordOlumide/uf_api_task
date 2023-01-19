@@ -1,10 +1,10 @@
 import 'dart:convert';
 
-import 'package:hive/hive.dart';
 import 'package:dio/dio.dart';
 import '../models/user.dart';
 import '../models/token.dart';
 import '../exceptions/network_request_exception.dart';
+import '../services/hive_services.dart';
 
 class NetworkHelper {
   const NetworkHelper._();
@@ -17,16 +17,17 @@ class NetworkHelper {
     required String username,
     required String password,
   }) async {
-    var signUpBox = await Hive.openBox('Signup credentials');
-    signUpBox.putAll({'username': username, 'password': password});
-    print('Storing::: username: $username and password: $password.');
+    HiveService.store(
+      boxName: 'Signup credentials',
+      data: {'username': username, 'password': password},
+    );
 
     await Future.delayed(const Duration(seconds: 4));
 
-    String retrievedUsername = signUpBox.get('username');
-    String retrievedPassword = signUpBox.get('password');
-    print(
-        'Retrieving::: username: $retrievedUsername and password: $retrievedPassword.');
+    HiveService.getData(
+      boxName: 'Signup credentials',
+      keys: ['username', 'password'],
+    );
   }
 
   static final Dio dio = Dio();
