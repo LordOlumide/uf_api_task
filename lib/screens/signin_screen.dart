@@ -28,27 +28,26 @@ class _SigninScreenState extends State<SigninScreen> {
     _usernameController = TextEditingController();
     _passwordController = TextEditingController();
     _loginProvider = LoginProvider();
-    _loginProvider.addListener(() {
-      final LoginState state = _loginProvider.currentState;
-      if (state is LoginLoadedState) {
-        print('signed in success');
-        Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => const HomeScreen()));
-      }
-    });
+    _loginProvider.addListener(loginStateListener);
 
     _usernameFocusNode = FocusNode();
     _passwordFocusNode = FocusNode();
   }
 
-  loginStateListener() {}
+  loginStateListener() {
+    if (_loginProvider.currentState is LoginLoadedState) {
+      print('signed in success');
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const HomeScreen()));
+    }
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
 
-    _loginProvider.removeListener(() {});
+    _loginProvider.removeListener(loginStateListener);
     _loginProvider.dispose();
 
     _usernameFocusNode.dispose();
@@ -63,7 +62,7 @@ class _SigninScreenState extends State<SigninScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableProvider.value(
+    return ListenableProvider<LoginProvider>.value(
       value: _loginProvider,
       child: Scaffold(
         appBar: AppBar(
@@ -106,10 +105,12 @@ class _SigninScreenState extends State<SigninScreen> {
                       onPressed: () {
                         unfocusAllNodes();
                         // try {
-                        LoginProvider().login(
-                          username: _usernameController.text,
-                          password: _passwordController.text,
-                        );
+                        if (state is! LoginLoadingState) {
+                          _loginProvider.login(
+                            username: _usernameController.text,
+                            password: _passwordController.text,
+                          );
+                        }
                         // } on NetworkRequestException catch (e) {
                         //   if (mounted) {
                         //     ScaffoldMessenger.of(context).showSnackBar(SnackBar(

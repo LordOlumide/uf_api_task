@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/user.dart';
-import '../helpers/network_helper.dart';
+import '../providers/signup/signup_provider.dart';
+import '../providers/signup/signup_state.dart';
 import '../exceptions/network_request_exception.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -15,6 +17,7 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   late final TextEditingController _usernameController;
   late final TextEditingController _passwordController;
+  late final SignupProvider _signupProvider;
 
   late final GlobalKey<FormState> _formKey;
 
@@ -26,6 +29,8 @@ class _SignupScreenState extends State<SignupScreen> {
     super.initState();
     _usernameController = TextEditingController();
     _passwordController = TextEditingController();
+    _signupProvider = SignupProvider();
+    _signupProvider.addListener(signupStateListener);
 
     _formKey = GlobalKey<FormState>();
 
@@ -33,10 +38,19 @@ class _SignupScreenState extends State<SignupScreen> {
     _passwordFocusNode = FocusNode();
   }
 
+  signupStateListener() {
+    if (_signupProvider.currentState is SignupLoadedState) {
+      print('signed in success');
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _signupProvider.removeListener(signupStateListener);
+    _signupProvider.dispose();
 
     _usernameFocusNode.dispose();
     _passwordFocusNode.dispose();
@@ -50,87 +64,93 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sign Up'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 30),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Username TextField
-              TextFormField(
-                controller: _usernameController,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Username cannot be empty';
-                  } else if (value.length < 4) {
-                    return 'Username length cannot be less than 6';
-                  }
-                  return null;
-                },
-                focusNode: _usernameFocusNode,
-                decoration: const InputDecoration(
-                  hintText: 'Username',
-                  border: OutlineInputBorder(borderSide: BorderSide(width: 2)),
-                ),
-              ),
-              const SizedBox(height: 30),
-
-              // Password TextField
-              TextFormField(
-                controller: _passwordController,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Password cannot be empty';
-                  } else if (value.length < 6) {
-                    return 'Password length cannot be less than 6';
-                  }
-                  return null;
-                },
-                focusNode: _passwordFocusNode,
-                decoration: const InputDecoration(
-                  hintText: 'Password',
-                  border: OutlineInputBorder(borderSide: BorderSide(width: 2)),
-                ),
-              ),
-              const SizedBox(height: 30),
-
-              ElevatedButton(
-                onPressed: () async {
-                  unfocusAllNodes();
-                  if (_formKey.currentState!.validate()) {
-                    try {
-                      final User currentUser = await NetworkHelper.signup(
-                        username: _usernameController.text,
-                        password: _passwordController.text,
-                      );
-                      print('currentUser is: ${currentUser.toString()}');
-                      if (mounted) {
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(const SnackBar(
-                          content: Text('Sign up success'),
-                        ));
-                      }
-                    } on NetworkRequestException catch (e) {
-                      print('Front catching error');
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(e.message),
-                        ));
-                      }
+    return ListenableProvider<SignupProvider>.value(
+      value: _signupProvider,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Sign Up'),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 30),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Username TextField
+                TextFormField(
+                  controller: _usernameController,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Username cannot be empty';
+                    } else if (value.length < 4) {
+                      return 'Username length cannot be less than 6';
                     }
-                  }
-                },
-                child: const Text(
-                  'Sign up',
-                  style: TextStyle(fontSize: 20),
+                    return null;
+                  },
+                  focusNode: _usernameFocusNode,
+                  decoration: const InputDecoration(
+                    hintText: 'Username',
+                    border:
+                        OutlineInputBorder(borderSide: BorderSide(width: 2)),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 30),
+
+                // Password TextField
+                TextFormField(
+                  controller: _passwordController,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Password cannot be empty';
+                    } else if (value.length < 6) {
+                      return 'Password length cannot be less than 6';
+                    }
+                    return null;
+                  },
+                  focusNode: _passwordFocusNode,
+                  decoration: const InputDecoration(
+                    hintText: 'Password',
+                    border:
+                        OutlineInputBorder(borderSide: BorderSide(width: 2)),
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                Selector<SignupProvider, SignupState>(
+                  selector: (_, provider) => _signupProvider.currentState,
+                  builder: (_, state, __) {
+                    return ElevatedButton(
+                      onPressed: () async {
+                        unfocusAllNodes();
+                        if (state is! SignupLoadingState) {
+                          if (_formKey.currentState!.validate()) {
+                            _signupProvider.signup(
+                              username: _usernameController.text,
+                              password: _passwordController.text,
+                            );
+                          }
+                        }
+                      },
+                      child: state is SignupLoadingState
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                valueColor:
+                                    AlwaysStoppedAnimation(Colors.white),
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Sign up',
+                              style: TextStyle(fontSize: 20),
+                            ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
